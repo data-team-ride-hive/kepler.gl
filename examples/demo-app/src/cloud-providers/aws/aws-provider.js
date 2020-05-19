@@ -269,7 +269,7 @@ export default class AwsProvider extends Provider {
       const lastAuthUser = window.localStorage.getItem(`${key}.LastAuthUser`);
       const userData = JSON.parse(window.localStorage.getItem(`${key}.${lastAuthUser}.userData`));
       return userData
-        ? userData.UserAttributes.find(function(item) {
+        ? userData.UserAttributes.find(item => {
             return item.Name === 'email';
           }).Value
         : '';
