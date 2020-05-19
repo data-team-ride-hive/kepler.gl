@@ -20,22 +20,19 @@
 
 import React, {useEffect} from 'react';
 import Amplify, {Hub} from 'aws-amplify';
-import awsconfig from '../../aws-exports';
+// import awsconfig from '../../aws-exports';
 import {AmplifyAuthenticator} from '@aws-amplify/ui-react';
 
-Amplify.configure(awsconfig);
+// Amplify.configure(awsconfig);
 export const AWS_LOGIN_URL = 'aws/aws-login';
-export const AWS_WEB_CLIENT_ID = awsconfig.aws_user_pools_web_client_id;
+// export const AWS_WEB_CLIENT_ID = awsconfig.aws_user_pools_web_client_id;
 
 const AwsLogin = () => {
   useEffect(() => {
-    Hub.listen('auth', (data) => {
+    Hub.listen('auth', data => {
       const {payload} = data;
       if (payload.event === 'signIn') {
         window.opener.postMessage({success: true}, location.origin);
-      }
-      if (payload.event === 'signOut') {
-        console.log('A user has signed out!');
       }
     });
   }, []);
