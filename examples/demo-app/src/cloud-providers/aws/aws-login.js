@@ -18,29 +18,29 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import React from 'react';
-import document from 'global/document';
-import {Provider} from 'react-redux';
-import {browserHistory, Router, Route} from 'react-router';
-import {syncHistoryWithStore} from 'react-router-redux';
-import {render} from 'react-dom';
-import store from './store';
-import App from './app';
-import {buildAppRoutes} from './utils/routes';
-import AwsLogin, {AWS_LOGIN_URL} from './cloud-providers/aws/aws-login';
+import React, {useEffect} from 'react';
+import Amplify, {Hub} from 'aws-amplify';
+import awsconfig from '../../aws-exports';
+import {AmplifyAuthenticator} from '@aws-amplify/ui-react';
 
-const history = syncHistoryWithStore(browserHistory, store);
-const appRoute = buildAppRoutes(App);
+Amplify.configure(awsconfig);
+export const AWS_LOGIN_URL = 'aws/aws-login';
+export const AWS_WEB_CLIENT_ID = awsconfig.aws_user_pools_web_client_id;
 
-const Root = () => (
-  <Provider store={store}>
-    <Router history={history}>
-      <Route path={AWS_LOGIN_URL} component={AwsLogin} />
-      <Route path="/" component={App}>
-        {appRoute}
-      </Route>
-    </Router>
-  </Provider>
-);
+const AwsLogin = () => {
+  useEffect(() => {
+    Hub.listen('auth', (data) => {
+      const {payload} = data;
+      if (payload.event === 'signIn') {
+        window.opener.postMessage({success: true}, location.origin);
+      }
+      if (payload.event === 'signOut') {
+        console.log('A user has signed out!');
+      }
+    });
+  }, []);
 
-render(<Root />, document.body.appendChild(document.createElement('div')));
+  return <AmplifyAuthenticator usernameAlias="email" />;
+};
+
+export default AwsLogin;
