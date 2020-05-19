@@ -30,6 +30,7 @@ export const PROVIDER_NAME = 'aws';
 export const DISPLAY_NAME = 'AWS';
 export const PRIVATE_STORAGE_ENABLED = true;
 export const SHARING_ENABLED = true;
+export const EXPIRE_TIME_IN_SECONDS = 60 * 60;
 
 Storage.configure({level: 'private'});
 
@@ -49,7 +50,7 @@ export default class AwsProvider extends Provider {
     const style = `location, toolbar, resizable, scrollbars, status, width=500, height=440, top=200, left=400`;
     const authWindow = window.open(link, 'awsCognito', style);
 
-    const handleLogin = async (e) => {
+    const handleLogin = async e => {
       if (authWindow) {
         authWindow.close();
       }
@@ -69,60 +70,61 @@ export default class AwsProvider extends Provider {
    * @returns {Array<Viz>}
    */
   async listMaps() {
-    let s3PrivateFiles = await this._getMapListFromStorage('private');
-    let s3PublicFiles = await this._getMapListFromStorage('public');
+    const s3PrivateFiles = await this._getMapListFromStorage('private');
+    const s3PublicFiles = await this._getMapListFromStorage('public');
 
     return [...s3PublicFiles, ...s3PrivateFiles];
   }
 
   async _getMapListFromStorage(level) {
     let mapList = [];
-    let capitalizedLevel = level.charAt(0).toUpperCase() + level.slice(1);
+    const capitalizedLevel = level.charAt(0).toUpperCase() + level.slice(1);
     await Storage.list('', {level})
-      .then((result) => {
+      .then(result => {
         mapList = AwsProvider._updateFileList(result, level);
       })
-      .catch((e) => {
+      .catch(e => {
         this._handleError(`${capitalizedLevel} map load failed`, e);
       });
     return mapList;
   }
 
   static async _updateFileList(fileList, level) {
-    let updatedFileList = [];
+    const updatedFileList = [];
 
     for (const file of fileList) {
-      if (!file.key.endsWith('.json')) {
-        continue;
-      }
-      const title = file.key.split('.')[0];
-      const thumbnailKey = title + '.png';
-      const thumbnailURL = await Storage.get(thumbnailKey, {
-        level: level,
-        download: false
-      });
+      if (file.key.endsWith('.json')) {
+        const title = file.key.split('.')[0];
+        const thumbnailKey = `${title}.png`;
+        const thumbnailURL = await Storage.get(thumbnailKey, {
+          level,
+          download: false
+        });
 
-      const description = await Storage.get(thumbnailKey, {
-        level: level,
-        download: true
-      }).then((thumbnail) =>
-        thumbnail.Metadata.desc ? atob(thumbnail.Metadata.desc) : 'No description available.'
-      );
-      const mapIsPrivate = level === 'private';
+        const description = await Storage.get(thumbnailKey, {
+          level,
+          download: true
+        }).then(thumbnail =>
+          thumbnail.Metadata.desc
+            ? this._decode_utf8(atob(thumbnail.Metadata.desc))
+            : 'No description available.'
+        );
+        const mapIsPrivate = level === 'private';
 
-      updatedFileList.push({
-        id: file.key,
-        title: title,
-        description: description,
-        privateMap: mapIsPrivate,
-        thumbnail: thumbnailURL,
-        lastModification: new Date(Date.parse(file.lastModified)),
-        loadParams: {
-          mapId: file.key,
+        updatedFileList.push({
+          id: file.key,
+          title,
+          description,
           privateMap: mapIsPrivate,
-          level: level
-        }
-      });
+          thumbnail: thumbnailURL,
+          lastModification: new Date(Date.parse(file.lastModified)),
+          loadParams: {
+            mapId: file.key,
+            privateMap: mapIsPrivate,
+            level
+          }
+        });
+      }
     }
     return updatedFileList;
   }
@@ -134,12 +136,12 @@ export default class AwsProvider extends Provider {
    */
   async downloadMap(loadParams) {
     const {level, mapId, identityId} = loadParams;
-    let mapURL =
+    const mapURL =
       level === 'private'
         ? await Storage.get(mapId, {level})
         : await Storage.get(mapId, {level, identityId});
 
-    const mapData = await fetch(mapURL).then((response) => response.json());
+    const mapData = await fetch(mapURL).then(response => response.json());
     this._loadParam = loadParams;
 
     return {
@@ -148,49 +150,65 @@ export default class AwsProvider extends Provider {
     };
   }
 
+  /**
+   * Save if isPublic false
+   * @returns {level, mapId, identityId}
+   *  or
+   *  ShareUrl if isPublic true
+   * @returns  {shareUrl}
+   * You can share url with saved map through public map link (as defined)
+   * or through loadParams used in downloadMap (commented - uncomment to use)
+   * in second case, the user has to be logged in to open the map
+   */
   async uploadMap({mapData, options = {}}) {
-    const {isPublic, overwrite} = options;
+    const {isPublic} = options;
     const {map, thumbnail} = mapData;
     const {title, description} = map && map.info;
     const name = title;
-    // Since we share through a map link, this could be private as well
+
+    /*
+     Since we share through a map link, this could be private as well
+     */
     const level = isPublic ? 'protected' : 'private';
     let mapId = '';
-    let identityId = '';
 
-    await Auth.currentUserInfo().then((userInfo) => {
-      identityId = userInfo.id;
-    });
-    await Storage.put(name + '.png', thumbnail, {
+    // // Uncomment to share url with loadParams:
+    // let identityId = '';
+    // await Auth.currentUserInfo().then(userInfo => {
+    // identityId = userInfo.id;
+    // });
+
+    await Storage.put(`${name}.png`, thumbnail, {
       level,
       contentType: 'images/png',
-      metadata: {desc: btoa(description)}
-    }).catch((e) => {
+      metadata: {desc: btoa(AwsProvider._encode_utf8(description))}
+    }).catch(e => {
       this._handleError('Saving failed', e);
     });
 
-    await Storage.put(name + '.json', map, {
+    await Storage.put(`${name}.json`, map, {
       level,
       contentType: 'application/json'
     })
-      .then((response) => {
+      .then(response => {
         mapId = response && response.key;
       })
-      .catch((e) => {
+      .catch(e => {
         this._handleError('Saving failed', e);
       });
 
     // If public, url for sharing is created:
     if (isPublic) {
-      let day = 60 * 60 * 24;
-      await Storage.get(mapId, {download: false, level, expires: day}).then((link) => {
-        this._shareUrl = encodeURIComponent(link);
+      // // Comment lines to share url with loadParams:
+      const config = {download: false, level, expires: EXPIRE_TIME_IN_SECONDS};
+      await Storage.get(mapId, config).then(link => {
+        this._shareUrl = encodeURIComponent(link || '');
       });
       return {
         shareUrl: this.getShareUrl(true)
       };
 
-      // // With loadParams used in downloadMap, but user has to be logged in
+      // // Uncomment lines to share url with loadParams:
       // this._loadParam =  {identityId, level, mapId};
       // return {shareUrl: this.getShareUrl(true)}
     }
@@ -242,7 +260,7 @@ export default class AwsProvider extends Provider {
       const tokenKey = `${key}.${lastAuthUser}.accessToken`;
       token = window.localStorage.getItem(tokenKey);
     }
-    return !!token;
+    return Boolean(token);
   }
 
   getUserName() {
@@ -251,7 +269,7 @@ export default class AwsProvider extends Provider {
       const lastAuthUser = window.localStorage.getItem(`${key}.LastAuthUser`);
       const userData = JSON.parse(window.localStorage.getItem(`${key}.${lastAuthUser}.userData`));
       return userData
-        ? userData['UserAttributes'].find(function (item) {
+        ? userData.UserAttributes.find(function(item) {
             return item.Name === 'email';
           }).Value
         : '';
@@ -284,8 +302,15 @@ export default class AwsProvider extends Provider {
   }
 
   _handleError(message, error) {
-    console.error(message, error);
     throw new Error(`${message}, error message: 
       ${error && error.message}`);
+  }
+
+  static _decode_utf8(byteString) {
+    return decodeURIComponent(escape(byteString));
+  }
+
+  static _encode_utf8(string) {
+    return unescape(encodeURIComponent(string));
   }
 }

@@ -32,7 +32,7 @@ class AwsIcon extends Component {
   static defaultProps = {
     predefinedClassName: 'data-ex-icons-aws',
     viewBox: '0 0 304 182',
-    height: '100%',
+    height: '100%'
   };
 
   render() {
@@ -40,7 +40,7 @@ class AwsIcon extends Component {
       <Icons.IconWrapper {...this.props}>
         <g>
           <path
-            style={{fill:'#252F3E'}}
+            style={{fill: '#252F3E'}}
             d="M86.4,66.4c0,3.7,0.4,6.7,1.1,8.9c0.8,2.2,1.8,4.6,3.2,7.2c0.5,0.8,0.7,1.6,0.7,2.3c0,1-0.6,2-1.9,3l-6.3,4.2
 		c-0.9,0.6-1.8,0.9-2.6,0.9c-1,0-2-0.5-3-1.4C76.2,90,75,88.4,74,86.8c-1-1.7-2-3.6-3.1-5.9c-7.8,9.2-17.6,13.8-29.4,13.8
 		c-8.4,0-15.1-2.4-20-7.2c-4.9-4.8-7.4-11.2-7.4-19.2c0-8.5,3-15.4,9.1-20.6c6.1-5.2,14.2-7.8,24.5-7.8c3.4,0,6.9,0.3,10.6,0.8
@@ -65,12 +65,12 @@ class AwsIcon extends Component {
           />
           <g>
             <path
-              style={{fillRule:'evenodd', clipRule: 'evenodd', fill:'#FF9900'}}
+              style={{fillRule: 'evenodd', clipRule: 'evenodd', fill: '#FF9900'}}
               d="M273.5,143.7c-32.9,24.3-80.7,37.2-121.8,37.2c-57.6,0-109.5-21.3-148.7-56.7c-3.1-2.8-0.3-6.6,3.4-4.4
 			c42.4,24.6,94.7,39.5,148.8,39.5c36.5,0,76.6-7.6,113.5-23.2C274.2,133.6,278.9,139.7,273.5,143.7z"
             />
             <path
-              style={{fillRule:'evenodd', clipRule: 'evenodd', fill:'#FF9900'}}
+              style={{fillRule: 'evenodd', clipRule: 'evenodd', fill: '#FF9900'}}
               d="M287.2,128.1c-4.2-5.4-27.8-2.6-38.5-1.3c-3.2,0.4-3.7-2.4-0.8-4.5c18.8-13.2,49.7-9.4,53.3-5
 			c3.6,4.5-1,35.4-18.6,50.2c-2.7,2.3-5.3,1.1-4.1-1.9C282.5,155.7,291.4,133.4,287.2,128.1z"
             />
