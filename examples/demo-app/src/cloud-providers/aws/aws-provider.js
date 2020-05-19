@@ -75,19 +75,15 @@ export default class AwsProvider extends Provider {
   }
 
   async _getMapListFromStorage(level) {
-    let mapList = [];
-    const capitalizedLevel = level.charAt(0).toUpperCase() + level.slice(1);
-    await Storage.list('', {level})
-      .then(result => {
-        mapList = AwsProvider._updateFileList(result, level);
-      })
+    return Storage.list('', {level})
+      .then(result => AwsProvider._prepareFileList(result, level))
       .catch(e => {
-        this._handleError(`${capitalizedLevel} map load failed`, e);
+        const capitalizedLevel = level.charAt(0).toUpperCase() + level.slice(1);
+        this._handleError(`${capitalizedLevel} maps failed to load`, e);
       });
-    return mapList;
   }
 
-  static async _updateFileList(fileList, level) {
+  static async _prepareFileList(fileList, level) {
     const updatedFileList = [];
 
     for (const file of fileList) {
@@ -107,18 +103,17 @@ export default class AwsProvider extends Provider {
             ? this._decode_utf8(atob(thumbnail.Metadata.desc))
             : 'No description available.'
         );
-        const mapIsPrivate = level === 'private';
 
         updatedFileList.push({
           id: file.key,
           title,
           description,
-          privateMap: mapIsPrivate,
+          privateMap: level === 'private',
           thumbnail: thumbnailURL,
           lastModification: new Date(Date.parse(file.lastModified)),
           loadParams: {
             mapId: file.key,
-            privateMap: mapIsPrivate,
+            privateMap: level === 'private',
             level
           }
         });
