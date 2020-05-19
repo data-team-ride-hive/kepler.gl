@@ -171,35 +171,40 @@ export default class AwsProvider extends Provider {
     // identityId = userInfo.id;
     // });
 
-    await Storage.put(`${name}.png`, thumbnail, {
-      level,
-      contentType: 'images/png',
-      metadata: {desc: btoa(AwsProvider._encode_utf8(description))}
-    }).catch(e => {
-      this._handleError('Saving failed', e);
-    });
-
-    await Storage.put(`${name}.json`, map, {
-      level,
-      contentType: 'application/json'
-    })
-      .then(response => {
-        mapId = response && response.key;
-      })
-      .catch(e => {
-        this._handleError('Saving failed', e);
+    try {
+      await Storage.put(`${name}.png`, thumbnail, {
+        level,
+        contentType: 'application/json',
+        metadata: {desc: btoa(AwsProvider._encode_utf8(description))}
       });
+    } catch (e) {
+      this._handleError('Saving failed', e);
+    }
+
+    try {
+      const response = await Storage.put(`${name}.json`, map, {
+        level,
+        contentType: 'application/json'
+      });
+      mapId = response && response.key;
+    } catch (e) {
+      this._handleError('Saving failed', e);
+    }
 
     // If public, url for sharing is created:
     if (isPublic) {
       // // Comment lines to share url with loadParams:
       const config = {download: false, level, expires: EXPIRE_TIME_IN_SECONDS};
-      await Storage.get(mapId, config).then(link => {
-        this._shareUrl = encodeURIComponent(link || '');
-      });
-      return {
-        shareUrl: this.getShareUrl(true)
-      };
+
+      try {
+        const urlLink = await Storage.get(mapId, config);
+        this._shareUrl = encodeURIComponent(urlLink || '');
+        return {
+          shareUrl: this.getShareUrl(true)
+        };
+      } catch (e) {
+        this._handleError('Saving failed', e);
+      }
 
       // // Uncomment lines to share url with loadParams:
       // this._loadParam =  {identityId, level, mapId};
