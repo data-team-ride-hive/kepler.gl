@@ -32,16 +32,14 @@ export const PRIVATE_STORAGE_ENABLED = true;
 export const SHARING_ENABLED = true;
 export const EXPIRE_TIME_IN_SECONDS = 60 * 60;
 
-Storage.configure({level: 'private'});
-
 export default class AwsProvider extends Provider {
   constructor() {
     super({name: PROVIDER_NAME, displayName: DISPLAY_NAME, icon: AwsIcon});
+    // Storage.configure({level: 'private'});
   }
 
   /**
    * Required!
-   * Idea / Hack: https://github.com/amazon-archives/amazon-cognito-identity-js/issues/508
    *
    * @param onCloudLoginSuccess
    */
