@@ -22,6 +22,7 @@ import {AUTH_TOKENS} from '../constants/default-settings';
 
 import DropboxProvider from './dropbox/dropbox-provider';
 import CartoProvider from './carto/carto-provider';
+import AwsProvider from './aws/aws-provider';
 
 const {DROPBOX_CLIENT_ID, CARTO_CLIENT_ID} = AUTH_TOKENS;
 const DROPBOX_CLIENT_NAME = 'Kepler.gl%20(managed%20by%20Uber%20Technologies%2C%20Inc.)';
@@ -30,11 +31,12 @@ export const DEFAULT_CLOUD_PROVIDER = 'dropbox';
 
 export const CLOUD_PROVIDERS = [
   new DropboxProvider(DROPBOX_CLIENT_ID, DROPBOX_CLIENT_NAME),
-  new CartoProvider(CARTO_CLIENT_ID)
+  new CartoProvider(CARTO_CLIENT_ID),
+  new AwsProvider()
 ];
 
 export function getCloudProvider(providerName) {
-  const cloudProvider = CLOUD_PROVIDERS.find(provider => provider.name === providerName);
+  const cloudProvider = CLOUD_PROVIDERS.find((provider) => provider.name === providerName);
   if (!cloudProvider) {
     throw new Error(`Unknown cloud provider ${providerName}`);
   }
