@@ -73,50 +73,65 @@ export default class AwsProvider extends Provider {
     return [...s3PublicFiles, ...s3PrivateFiles];
   }
 
-  async _getMapListFromStorage(level) {
+  _getMapListFromStorage(level) {
     return Storage.list('', {level})
       .then(result => AwsProvider._prepareFileList(result, level))
       .catch(e => {
         const capitalizedLevel = level.charAt(0).toUpperCase() + level.slice(1);
-        this._handleError(`${capitalizedLevel} maps failed to load`, e);
+        AwsProvider._handleError(`${capitalizedLevel} maps failed to load`, e);
       });
   }
 
+  /**
+   * Generates array of viz objects from list of files from storage
+   * @returns {Array<Viz>}
+   */
   static async _prepareFileList(fileList, level) {
     const updatedFileList = [];
+    const mapFileList = fileList.filter(file => file.key.endsWith('map.json'));
 
-    for (const file of fileList) {
-      if (file.key.endsWith('.json')) {
-        const title = file.key.split('.')[0];
-        const thumbnailKey = `${title}.png`;
-        const thumbnailURL = await Storage.get(thumbnailKey, {
-          level,
-          download: false
-        });
+    for (const file of mapFileList) {
+      const title = file.key.split('.')[0];
+      const thumbnailKey = `${title}.thumbnail.png`;
+      const metaKey = `${title}.meta.json`;
 
-        const description = await Storage.get(thumbnailKey, {
-          level,
-          download: true
-        }).then(thumbnail =>
-          thumbnail.Metadata.desc
-            ? this._decode_utf8(atob(thumbnail.Metadata.desc))
-            : 'No description available.'
-        );
+      const thumbnailURL = fileList.some(f => f.key === thumbnailKey)
+        ? await Storage.get(thumbnailKey, {
+            level,
+            download: false
+          }).catch(e => {
+            AwsProvider._handleError(`Map image ${thumbnailKey} failed to load`, e);
+          })
+        : null;
 
-        updatedFileList.push({
-          id: file.key,
-          title,
-          description,
+      const description = fileList.some(f => f.key === metaKey)
+        ? await Storage.get(metaKey, {
+            level,
+            download: true
+          })
+            .then(metaFile => {
+              return metaFile.Body && metaFile.Body.description
+                ? metaFile.Body.description
+                : 'No description available.';
+            })
+            .catch(e => {
+              AwsProvider._handleError(`Description file ${thumbnailKey} failed to load`, e);
+            })
+        : 'No description available.';
+
+      updatedFileList.push({
+        id: file.key,
+        title,
+        description,
+        privateMap: level === 'private',
+        thumbnail: thumbnailURL,
+        lastModification: new Date(Date.parse(file.lastModified)),
+        loadParams: {
+          mapId: file.key,
           privateMap: level === 'private',
-          thumbnail: thumbnailURL,
-          lastModification: new Date(Date.parse(file.lastModified)),
-          loadParams: {
-            mapId: file.key,
-            privateMap: level === 'private',
-            level
-          }
-        });
-      }
+          level
+        }
+      });
     }
     return updatedFileList;
   }
@@ -143,11 +158,9 @@ export default class AwsProvider extends Provider {
   }
 
   /**
-   * Save if isPublic false
-   * @returns {level, mapId, identityId}
-   *  or
-   *  ShareUrl if isPublic true
-   * @returns  {shareUrl}
+   * Save if isPublic false or
+   * ShareUrl if isPublic true
+   * @returns {Promise<{level, mapId, identityId} || {shareUrl}>}
    * You can share url with saved map through public map link (as defined)
    * or through loadParams used in downloadMap (commented - uncomment to use)
    * in second case, the user has to be logged in to open the map
@@ -157,44 +170,15 @@ export default class AwsProvider extends Provider {
     const {map, thumbnail} = mapData;
     const {title, description} = map && map.info;
     const name = title;
-
-    /*
-     Since we share through a map link, this could be private as well
-     */
+    // Since we share through a map link, this could be private as well
     const level = isPublic ? 'protected' : 'private';
-    let mapId = '';
-
-    // // Uncomment to share url with loadParams:
-    // let identityId = '';
-    // await Auth.currentUserInfo().then(userInfo => {
-    // identityId = userInfo.id;
-    // });
-
-    try {
-      await Storage.put(`${name}.png`, thumbnail, {
-        level,
-        contentType: 'application/json',
-        metadata: {desc: btoa(AwsProvider._encode_utf8(description))}
-      });
-    } catch (e) {
-      this._handleError('Saving failed', e);
-    }
-
-    try {
-      const response = await Storage.put(`${name}.json`, map, {
-        level,
-        contentType: 'application/json'
-      });
-      mapId = response && response.key;
-    } catch (e) {
-      this._handleError('Saving failed', e);
-    }
-
+    await this._saveFile(name, 'thumbnail.png', thumbnail, level);
+    await this._saveFile(name, 'meta.json', {description}, level);
+    const mapId = await this._saveFile(name, 'map.json', map, level).then(resp => resp && resp.key);
     // If public, url for sharing is created:
     if (isPublic) {
-      // // Comment lines to share url with loadParams:
+      // // Comment lines below to share url with loadParams:
       const config = {download: false, level, expires: EXPIRE_TIME_IN_SECONDS};
-
       try {
         const urlLink = await Storage.get(mapId, config);
         this._shareUrl = encodeURIComponent(urlLink || '');
@@ -202,14 +186,12 @@ export default class AwsProvider extends Provider {
           shareUrl: this.getShareUrl(true)
         };
       } catch (e) {
-        this._handleError('Saving failed', e);
+        AwsProvider._handleError('Saving failed', e);
       }
-
-      // // Uncomment lines to share url with loadParams:
+      // // Uncomment lines below to share url with loadParams:
       // this._loadParam =  {identityId, level, mapId};
       // return {shareUrl: this.getShareUrl(true)}
     }
-
     // if not public, map is saved and private map url is created
     this._loadParam = {...this._loadParam, level, mapId};
     return this._loadParam;
@@ -226,7 +208,7 @@ export default class AwsProvider extends Provider {
         onCloudLogoutSuccess();
       });
     } catch (e) {
-      this._handleError('Signing out failed', e);
+      AwsProvider._handleError('Signing out failed', e);
     }
   }
 
@@ -298,7 +280,28 @@ export default class AwsProvider extends Provider {
       : `/${mapLink}`;
   }
 
-  _handleError(message, error) {
+  _saveFile(name, suffix, content, level, metadata) {
+    let contentType = '';
+    if (suffix === 'thumbnail.png') {
+      contentType = 'images/png';
+    }
+    if (suffix === 'map.json') {
+      contentType = 'application/json';
+    }
+    if (suffix === 'meta.json') {
+      contentType = 'application/json';
+    }
+
+    return Storage.put(`${name}.${suffix}`, content, {
+      level,
+      contentType,
+      metadata
+    }).catch(e => {
+      AwsProvider._handleError('Saving failed', e);
+    });
+  }
+
+  static _handleError(message, error) {
     throw new Error(`${message}, error message: 
       ${error && error.message}`);
   }
