@@ -26,11 +26,11 @@ import {Auth, Storage} from 'aws-amplify';
 import {MAP_URI} from '../../constants/default-settings';
 import {AWS_LOGIN_URL, AWS_WEB_CLIENT_ID} from './aws-login';
 
-export const PROVIDER_NAME = 'aws';
-export const DISPLAY_NAME = 'AWS';
-export const PRIVATE_STORAGE_ENABLED = true;
-export const SHARING_ENABLED = true;
-export const EXPIRE_TIME_IN_SECONDS = 60 * 60;
+const PROVIDER_NAME = 'aws';
+const DISPLAY_NAME = 'AWS';
+const PRIVATE_STORAGE_ENABLED = true;
+const SHARING_ENABLED = true;
+const EXPIRE_TIME_IN_SECONDS = 60 * 60;
 
 export default class AwsProvider extends Provider {
   constructor(accountName) {
