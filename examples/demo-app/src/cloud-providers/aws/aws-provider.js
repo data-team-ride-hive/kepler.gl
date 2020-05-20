@@ -33,9 +33,8 @@ export const SHARING_ENABLED = true;
 export const EXPIRE_TIME_IN_SECONDS = 60 * 60;
 
 export default class AwsProvider extends Provider {
-  constructor() {
-    super({name: PROVIDER_NAME, displayName: DISPLAY_NAME, icon: AwsIcon});
-    // Storage.configure({level: 'private'});
+  constructor(accountName) {
+    super({name: PROVIDER_NAME, displayName: accountName || DISPLAY_NAME, icon: AwsIcon});
   }
 
   /**
