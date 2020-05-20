@@ -47,15 +47,18 @@ export default class AwsProvider extends Provider {
     const style = `location, toolbar, resizable, scrollbars, status, width=500, height=440, top=200, left=400`;
     const authWindow = window.open(link, 'awsCognito', style);
 
+    // if authWindow is null, it could not be opened
     const handleLogin = async e => {
-      if (authWindow) {
-        authWindow.close();
-      }
+      if (authWindow.location.href === link) {
+        if (authWindow) {
+          authWindow.close();
+        }
 
-      window.removeEventListener('message', handleLogin);
+        window.removeEventListener('message', handleLogin);
 
-      if (e.data.success) {
-        onCloudLoginSuccess();
+        if (e.data.success) {
+          onCloudLoginSuccess();
+        }
       }
     };
     window.addEventListener('message', handleLogin);
