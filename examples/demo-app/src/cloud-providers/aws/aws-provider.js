@@ -24,17 +24,27 @@ import window from 'global';
 import 'aws-sdk';
 import {Auth, Storage} from 'aws-amplify';
 import {MAP_URI} from '../../constants/default-settings';
-import {AWS_LOGIN_URL, AWS_WEB_CLIENT_ID} from './aws-login';
+import {AWS_LOGIN_URL} from './aws-login';
 
 const PROVIDER_NAME = 'aws';
 const DISPLAY_NAME = 'AWS';
 const PRIVATE_STORAGE_ENABLED = true;
 const SHARING_ENABLED = true;
+// If false, sharing url gives back loadParams (only works if user is logged)
+const SHARING_WITH_MAP_URL = true;
 const EXPIRE_TIME_IN_SECONDS = 60 * 60;
 
 export default class AwsProvider extends Provider {
   constructor(accountName) {
     super({name: PROVIDER_NAME, displayName: accountName || DISPLAY_NAME, icon: AwsIcon});
+    this._getUserInfo()
+      .then(currentUser => {
+        this._currentUser = currentUser;
+      })
+      .catch(e => AwsProvider._handleError(e));
+
+    this._loadParam = {level: '', mapId: '', identityId: ''};
+    this._shareUrl = '';
   }
 
   /**
@@ -57,6 +67,11 @@ export default class AwsProvider extends Provider {
         window.removeEventListener('message', handleLogin);
 
         if (e.data.success) {
+          this._getUserInfo()
+            .then(currentUser => {
+              this._currentUser = currentUser;
+            })
+            .catch();
           onCloudLoginSuccess();
         }
       }
@@ -167,29 +182,27 @@ export default class AwsProvider extends Provider {
     const name = title;
     // Since we share through a map link, this could be private as well
     const level = isPublic ? 'protected' : 'private';
-    await this._saveFile(name, 'thumbnail.png', thumbnail, level);
-    await this._saveFile(name, 'meta.json', {description}, level);
-    const mapId = await this._saveFile(name, 'map.json', map, level).then(resp => resp && resp.key);
-    // If public, url for sharing is created:
-    if (isPublic) {
-      // // Comment lines below to share url with loadParams:
-      const config = {download: false, level, expires: EXPIRE_TIME_IN_SECONDS};
-      try {
-        const urlLink = await Storage.get(mapId, config);
-        this._shareUrl = encodeURIComponent(urlLink || '');
-        return {
-          shareUrl: this.getShareUrl(true)
-        };
-      } catch (e) {
-        AwsProvider._handleError('Saving failed', e);
+    this._saveFile(name, 'thumbnail.png', thumbnail, level);
+    this._saveFile(name, 'meta.json', {description}, level);
+    return this._saveFile(name, 'map.json', map, level).then(resp => {
+      this._loadParam = {level, mapId: resp && resp.key};
+      // If public, url for sharing is created:
+      if (isPublic) {
+        if (SHARING_WITH_MAP_URL) {
+          const config = {download: false, level, expires: EXPIRE_TIME_IN_SECONDS};
+          return Storage.get(resp && resp.key, config)
+            .then(url => {
+              this._shareUrl = encodeURIComponent(url || '');
+              return {shareUrl: this.getShareUrl(true)};
+            })
+            .catch(e => AwsProvider._handleError('Getting map url failed', e));
+        }
+        this._loadParam.identityId = this._currentUser && this._currentUser.id;
+        return {shareUrl: this.getShareUrl(true)};
       }
-      // // Uncomment lines below to share url with loadParams:
-      // this._loadParam =  {identityId, level, mapId};
-      // return {shareUrl: this.getShareUrl(true)}
-    }
-    // if not public, map is saved and private map url is created
-    this._loadParam = {...this._loadParam, level, mapId};
-    return this._loadParam;
+      // if not public, map is saved and private map url is created
+      return this._loadParam;
+    });
   }
 
   /**
@@ -198,13 +211,12 @@ export default class AwsProvider extends Provider {
    * @param onCloudLogoutSuccess
    */
   async logout(onCloudLogoutSuccess) {
-    try {
-      await Auth.signOut().then(() => {
+    Auth.signOut()
+      .then(() => {
+        this._currentUser = null;
         onCloudLogoutSuccess();
-      });
-    } catch (e) {
-      AwsProvider._handleError('Signing out failed', e);
-    }
+      })
+      .catch(e => AwsProvider._handleError('Signing out failed', e));
   }
 
   /**
@@ -226,53 +238,49 @@ export default class AwsProvider extends Provider {
   }
 
   getAccessToken() {
-    let token = null;
-    if (window.localStorage) {
-      const key = `CognitoIdentityServiceProvider.${AWS_WEB_CLIENT_ID}`;
-      const lastAuthUserKey = `${key}.LastAuthUser`;
-      const lastAuthUser = window.localStorage.getItem(lastAuthUserKey);
-      const tokenKey = `${key}.${lastAuthUser}.accessToken`;
-      token = window.localStorage.getItem(tokenKey);
-    }
-    return Boolean(token);
+    return Boolean(this._currentUser && this._currentUser.id);
   }
 
   getUserName() {
-    if (window.localStorage) {
-      const key = `CognitoIdentityServiceProvider.${AWS_WEB_CLIENT_ID}`;
-      const lastAuthUser = window.localStorage.getItem(`${key}.LastAuthUser`);
-      const userData = JSON.parse(window.localStorage.getItem(`${key}.${lastAuthUser}.userData`));
-      return userData
-        ? userData.UserAttributes.find(item => {
-            return item.Name === 'email';
-          }).Value
-        : '';
+    return (this._currentUser && this._currentUser.username) || '';
+  }
+
+  getShareUrl(fullUrl) {
+    let shareUrl;
+    if (SHARING_WITH_MAP_URL) {
+      shareUrl = `/${MAP_URI}${this._shareUrl}`;
+    } else {
+      const {level, mapId, identityId} = this._loadParam;
+      shareUrl = `demo/map/${PROVIDER_NAME}?level=${level}&mapId=${mapId}&identityId=${identityId}`;
     }
-    return null;
-  }
-
-  getAccessTokenFromLocation() {}
-
-  getShareUrl(fullUrl = true) {
-    // Shared through direct map link:
     return fullUrl
-      ? `${window.location.protocol}//${window.location.host}/${MAP_URI}${this._shareUrl}`
-      : `/${MAP_URI}${this._shareUrl}`;
-
-    // // To share map thorough loadParams in url:
-    // const {level, mapId, identityId} = this._loadParam;
-    // const mapLink = `demo/map/${PROVIDER_NAME}?level=${level}&mapId=${mapId}&identityId=${identityId}`;
-    // return fullUrl
-    //     ? `${window.location.protocol}//${window.location.host}/${mapLink}`
-    //     : `/${mapLink}`;
+      ? `${window.location.protocol}//${window.location.host}/${shareUrl}`
+      : `/${shareUrl}`;
   }
 
-  getMapUrl(fullURL = true) {
-    const {level, mapId} = this._loadParam;
-    const mapLink = `demo/map/${PROVIDER_NAME}?level=${level}&mapId=${mapId}`;
+  getMapUrl(fullURL) {
+    const {level, mapId, identityId} = this._loadParam;
+    let mapUrl = `demo/map/${PROVIDER_NAME}?level=${level}&mapId=${mapId}`;
+    if (identityId && identityId !== (this._currentUser && this._currentUser.id)) {
+      mapUrl = `${mapUrl}&identityId=${identityId}`;
+    }
     return fullURL
-      ? `${window.location.protocol}//${window.location.host}/${mapLink}`
-      : `/${mapLink}`;
+      ? `${window.location.protocol}//${window.location.host}/${mapUrl}`
+      : `/${mapUrl}`;
+  }
+
+  _getUserInfo() {
+    return Auth.currentUserInfo()
+      .then(userInfo => {
+        return {
+          id: userInfo && userInfo.id,
+          username: userInfo && userInfo.attributes && userInfo.attributes.email
+        };
+      })
+      .then(currentUserInfo => currentUserInfo)
+      .catch(e => {
+        AwsProvider._handleError(`User information failed to load`, e);
+      });
   }
 
   _saveFile(name, suffix, content, level, metadata) {
@@ -291,9 +299,13 @@ export default class AwsProvider extends Provider {
       level,
       contentType,
       metadata
-    }).catch(e => {
-      AwsProvider._handleError('Saving failed', e);
-    });
+    })
+      .then(resp => resp)
+      .catch(e => {
+        AwsProvider._handleError(`Saving ${name}.${suffix} file failed`, e);
+      });
+  }
+
   static _getFile(key, level, fileType, download) {
     return Storage.get(key, {
       level,
@@ -316,13 +328,5 @@ export default class AwsProvider extends Provider {
   static _handleError(message, error) {
     throw new Error(`${message}, error message: 
       ${error && error.message}`);
-  }
-
-  static _decode_utf8(byteString) {
-    return decodeURIComponent(escape(byteString));
-  }
-
-  static _encode_utf8(string) {
-    return unescape(encodeURIComponent(string));
   }
 }
