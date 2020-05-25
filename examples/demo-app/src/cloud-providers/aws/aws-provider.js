@@ -248,7 +248,7 @@ export default class AwsProvider extends Provider {
   getShareUrl(fullUrl) {
     let shareUrl;
     if (SHARING_WITH_MAP_URL) {
-      shareUrl = `/${MAP_URI}${this._shareUrl}`;
+      shareUrl = `${MAP_URI}${this._shareUrl}`;
     } else {
       const {level, mapId, identityId} = this._loadParam;
       shareUrl = `demo/map/${PROVIDER_NAME}?level=${level}&mapId=${mapId}&identityId=${identityId}`;
