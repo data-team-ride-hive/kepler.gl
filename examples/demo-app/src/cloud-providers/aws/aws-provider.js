@@ -91,53 +91,43 @@ export default class AwsProvider extends Provider {
    * @returns {Array<Viz>}
    */
   static async _prepareFileList(fileList, level) {
-    const updatedFileList = [];
     const mapFileList = fileList.filter(file => file.key.endsWith('map.json'));
 
-    for (const file of mapFileList) {
+    const updatedFileList = mapFileList.map(file => {
       const title = file.key.split('.')[0];
       const thumbnailKey = `${title}.thumbnail.png`;
       const metaKey = `${title}.meta.json`;
 
-      const thumbnailURL = fileList.some(f => f.key === thumbnailKey)
-        ? await Storage.get(thumbnailKey, {
-            level,
-            download: false
-          }).catch(e => {
-            AwsProvider._handleError(`Map image ${thumbnailKey} failed to load`, e);
-          })
-        : null;
-
-      const description = fileList.some(f => f.key === metaKey)
-        ? await Storage.get(metaKey, {
-            level,
-            download: true
-          })
-            .then(metaFile => {
-              return metaFile.Body && metaFile.Body.description
-                ? metaFile.Body.description
-                : 'No description available.';
-            })
-            .catch(e => {
-              AwsProvider._handleError(`Description file ${thumbnailKey} failed to load`, e);
-            })
-        : 'No description available.';
-
-      updatedFileList.push({
+      const fileData = {
         id: file.key,
         title,
-        description,
+        description: '',
         privateMap: level === 'private',
-        thumbnail: thumbnailURL,
+        thumbnail: '',
         lastModification: new Date(Date.parse(file.lastModified)),
         loadParams: {
+          identityId: '',
           mapId: file.key,
-          privateMap: level === 'private',
           level
         }
-      });
-    }
-    return updatedFileList;
+      };
+
+      const thumbnailUrl = fileList.some(f => f.key === thumbnailKey)
+        ? this._getFile(thumbnailKey, level, 'image', false)
+        : null;
+      const description = fileList.some(f => f.key === metaKey)
+        ? this._getFile(metaKey, level, 'meta data', true)
+        : 'No description meta data file';
+
+      return Promise.all([thumbnailUrl, description])
+        .then(respList => {
+          fileData.thumbnail = respList[0];
+          fileData.description = respList[1];
+        })
+        .then(resp => fileData)
+        .catch(e => this._handleError(e));
+    });
+    return Promise.all(updatedFileList);
   }
 
   /**
