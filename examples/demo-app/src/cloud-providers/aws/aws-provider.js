@@ -70,10 +70,11 @@ export default class AwsProvider extends Provider {
    * @returns {Array<Viz>}
    */
   async listMaps() {
-    const s3PrivateFiles = await this._getMapListFromStorage('private');
-    const s3PublicFiles = await this._getMapListFromStorage('public');
-
-    return [...s3PublicFiles, ...s3PrivateFiles];
+    const publicMaps = this._getMapListFromStorage('public');
+    const privateMaps = this._getMapListFromStorage('private');
+    return Promise.all([publicMaps, privateMaps])
+      .then(values => values.flat())
+      .catch(e => AwsProvider._handleError(e));
   }
 
   _getMapListFromStorage(level) {
