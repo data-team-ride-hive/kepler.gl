@@ -168,7 +168,7 @@ export default class AwsProvider extends Provider {
           format: 'keplergl'
         };
       })
-      .catch();
+      .catch(e => AwsProvider._handleError(`Map downloading failed`, e));
   }
 
   /**
