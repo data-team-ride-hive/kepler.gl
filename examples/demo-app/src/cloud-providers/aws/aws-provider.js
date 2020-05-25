@@ -137,18 +137,19 @@ export default class AwsProvider extends Provider {
    */
   async downloadMap(loadParams) {
     const {level, mapId, identityId} = loadParams;
-    const mapURL =
-      level === 'private'
-        ? await Storage.get(mapId, {level})
-        : await Storage.get(mapId, {level, identityId});
-
-    const mapData = await fetch(mapURL).then(response => response.json());
-    this._loadParam = loadParams;
-
-    return {
-      map: mapData,
-      format: 'keplergl'
-    };
+    return Storage.get(mapId, {level, ...(level === 'private' ? {} : {identityId})})
+      .then(fetch)
+      .then(response => response.json())
+      .then(mapData => {
+        if (this._loadParam !== loadParams) {
+          this._loadParam = loadParams;
+        }
+        return {
+          map: mapData,
+          format: 'keplergl'
+        };
+      })
+      .catch();
   }
 
   /**
