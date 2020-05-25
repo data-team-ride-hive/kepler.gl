@@ -293,6 +293,23 @@ export default class AwsProvider extends Provider {
     }).catch(e => {
       AwsProvider._handleError('Saving failed', e);
     });
+  static _getFile(key, level, fileType, download) {
+    return Storage.get(key, {
+      level,
+      download
+    })
+      .then(file => {
+        if (fileType === 'meta data') {
+          return file.Body && file.Body.description
+            ? file.Body.description
+            : 'No description available.';
+        }
+        return file;
+      })
+      .then(resp => resp)
+      .catch(e => {
+        AwsProvider._handleError(`Map ${fileType} ${key} failed to load`, e);
+      });
   }
 
   static _handleError(message, error) {
