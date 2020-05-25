@@ -25,7 +25,6 @@ import {AmplifyAuthenticator} from '@aws-amplify/ui-react';
 
 // Amplify.configure(awsconfig);
 export const AWS_LOGIN_URL = 'aws/aws-login';
-// export const AWS_WEB_CLIENT_ID = awsconfig.aws_user_pools_web_client_id;
 
 const AwsLogin = () => {
   useEffect(() => {
