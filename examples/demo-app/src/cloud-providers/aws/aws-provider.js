@@ -128,10 +128,10 @@ export default class AwsProvider extends Provider {
       };
 
       const thumbnailUrl = fileList.some(f => f.key === thumbnailKey)
-        ? this._getFile(thumbnailKey, level, 'image', false)
+        ? this._getFile(thumbnailKey, 'image', {level, download: false})
         : null;
       const description = fileList.some(f => f.key === metaKey)
-        ? this._getFile(metaKey, level, 'meta data', true)
+        ? this._getFile(metaKey, 'meta data', {level, download: true})
         : 'No description meta data file';
 
       return Promise.all([thumbnailUrl, description])
@@ -190,12 +190,10 @@ export default class AwsProvider extends Provider {
       if (isPublic) {
         if (SHARING_WITH_MAP_URL) {
           const config = {download: false, level, expires: EXPIRE_TIME_IN_SECONDS};
-          return Storage.get(resp && resp.key, config)
-            .then(url => {
-              this._shareUrl = encodeURIComponent(url || '');
-              return {shareUrl: this.getShareUrl(true)};
-            })
-            .catch(e => AwsProvider._handleError('Getting map url failed', e));
+          return AwsProvider._getFile(resp && resp.key, 'map', config).then(url => {
+            this._shareUrl = encodeURIComponent(url);
+            return {shareUrl: this.getShareUrl(true)};
+          });
         }
         this._loadParam.identityId = this._currentUser && this._currentUser.id;
         return {shareUrl: this.getShareUrl(true)};
@@ -306,10 +304,12 @@ export default class AwsProvider extends Provider {
       });
   }
 
-  static _getFile(key, level, fileType, download) {
+  static _getFile(key, fileType, config) {
+    const {level, download, expires} = config;
     return Storage.get(key, {
       level,
-      download
+      download,
+      expires
     })
       .then(file => {
         if (fileType === 'meta data') {
@@ -321,7 +321,7 @@ export default class AwsProvider extends Provider {
       })
       .then(resp => resp)
       .catch(e => {
-        AwsProvider._handleError(`Map ${fileType} ${key} failed to load`, e);
+        AwsProvider._handleError(`Getting ${fileType} file ${key} failed`, e);
       });
   }
 
