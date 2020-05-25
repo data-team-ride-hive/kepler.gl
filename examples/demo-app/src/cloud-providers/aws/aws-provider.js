@@ -182,25 +182,30 @@ export default class AwsProvider extends Provider {
     const name = title;
     // Since we share through a map link, this could be private as well
     const level = isPublic ? 'protected' : 'private';
-    this._saveFile(name, 'thumbnail.png', thumbnail, level);
-    this._saveFile(name, 'meta.json', {description}, level);
-    return this._saveFile(name, 'map.json', map, level).then(resp => {
-      this._loadParam = {level, mapId: resp && resp.key};
-      // If public, url for sharing is created:
-      if (isPublic) {
-        if (SHARING_WITH_MAP_URL) {
-          const config = {download: false, level, expires: EXPIRE_TIME_IN_SECONDS};
-          return AwsProvider._getFile(resp && resp.key, 'map', config).then(url => {
-            this._shareUrl = encodeURIComponent(url);
-            return {shareUrl: this.getShareUrl(true)};
-          });
+    const saveThumbnail = this._saveFile(name, 'thumbnail.png', thumbnail, level);
+    const saveMeta = this._saveFile(name, 'meta.json', {description}, level);
+    const saveMap = this._saveFile(name, 'map.json', map, level);
+
+    return Promise.all([saveThumbnail, saveMeta, saveMap])
+      .then(savedList => {
+        const key = savedList && savedList[2] && savedList[2].key;
+        this._loadParam = {level, mapId: key};
+        // If public, url for sharing is created:
+        if (isPublic) {
+          if (SHARING_WITH_MAP_URL) {
+            const config = {download: false, level, expires: EXPIRE_TIME_IN_SECONDS};
+            return AwsProvider._getFile(key, 'map', config).then(url => {
+              this._shareUrl = encodeURIComponent(url);
+              return {shareUrl: this.getShareUrl(true)};
+            });
+          }
+          this._loadParam.identityId = this._currentUser && this._currentUser.id;
+          return {shareUrl: this.getShareUrl(true)};
         }
-        this._loadParam.identityId = this._currentUser && this._currentUser.id;
-        return {shareUrl: this.getShareUrl(true)};
-      }
-      // if not public, map is saved and private map url is created
-      return this._loadParam;
-    });
+        // if not public, map is saved and private map url is created
+        return this._loadParam;
+      })
+      .catch(e => AwsProvider._handleError(`Error at saving ${name} files`, e));
   }
 
   /**
