@@ -30,8 +30,15 @@ const PROVIDER_NAME = 'aws';
 const DISPLAY_NAME = 'AWS';
 const PRIVATE_STORAGE_ENABLED = true;
 const SHARING_ENABLED = true;
-// If false, sharing url gives back loadParams (only works if user is logged)
+
+// Here you can configure if share url uses mapUrl or loadParams, e.g.:
+// Sharing with map url: http://localhost:8080/demo/map?mapUrl=''
+// Sharing with loadParams (only works if user is logged in):
+// http://localhost:8080/demo/map/aws?level=protected&mapId=''&identityId=''
 const SHARING_WITH_MAP_URL = true;
+
+// If sharing url with mapUrl, here you can configure the expiration time in seconds:
+// Per default in AWS backend maximal time is one hour
 const EXPIRE_TIME_IN_SECONDS = 60 * 60;
 
 export default class AwsProvider extends Provider {
@@ -48,7 +55,6 @@ export default class AwsProvider extends Provider {
   }
 
   /**
-   * Required!
    *
    * @param onCloudLoginSuccess
    */
@@ -80,7 +86,6 @@ export default class AwsProvider extends Provider {
   }
 
   /**
-   * Required!
    *
    * @returns {Array<Viz>}
    */
@@ -146,7 +151,6 @@ export default class AwsProvider extends Provider {
   }
 
   /**
-   * Required!
    *
    * @returns {MapResponse}
    */
@@ -172,7 +176,7 @@ export default class AwsProvider extends Provider {
    * ShareUrl if isPublic true
    * @returns {Promise<{level, mapId, identityId} || {shareUrl}>}
    * You can share url with saved map through public map link (as defined)
-   * or through loadParams used in downloadMap (commented - uncomment to use)
+   * or through loadParams used in downloadMap (set SHARING_WITH_MAP_URL to false to use)
    * in second case, the user has to be logged in to open the map
    */
   async uploadMap({mapData, options = {}}) {
@@ -190,7 +194,7 @@ export default class AwsProvider extends Provider {
       .then(savedList => {
         const key = savedList && savedList[2] && savedList[2].key;
         this._loadParam = {level, mapId: key};
-        // If public, url for sharing is created:
+        // if public, url for sharing is created:
         if (isPublic) {
           if (SHARING_WITH_MAP_URL) {
             const config = {download: false, level, expires: EXPIRE_TIME_IN_SECONDS};
@@ -209,7 +213,6 @@ export default class AwsProvider extends Provider {
   }
 
   /**
-   * Required!
    *
    * @param onCloudLogoutSuccess
    */
@@ -223,7 +226,6 @@ export default class AwsProvider extends Provider {
   }
 
   /**
-   * Required!
    *
    * @returns {boolean}
    */
@@ -232,7 +234,6 @@ export default class AwsProvider extends Provider {
   }
 
   /**
-   * Required!
    *
    * @returns {boolean}
    */
