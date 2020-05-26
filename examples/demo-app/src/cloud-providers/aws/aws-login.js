@@ -20,11 +20,12 @@
 
 import React, {useEffect} from 'react';
 import Amplify, {Hub} from 'aws-amplify';
-// import awsconfig from '../../aws-exports';
+import awsconfig from '../../aws-exports';
 import {AmplifyAuthenticator} from '@aws-amplify/ui-react';
 
-// Amplify.configure(awsconfig);
+Amplify.configure(awsconfig);
 export const AWS_LOGIN_URL = 'aws/aws-login';
+export const AWS_WEB_CLIENT_ID = awsconfig && awsconfig.aws_cognito_identity_pool_id;
 
 const AwsLogin = () => {
   useEffect(() => {
