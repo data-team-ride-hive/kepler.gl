@@ -64,9 +64,15 @@ export default class AwsProvider extends Provider {
    */
   async login(onCloudLoginSuccess) {
     if (!this.clientId) {
-      // Log the error:
+      // throws error if amplify configuration not set:
       Auth.currentUserInfo().catch();
       return;
+    }
+    if (this._currentUser && this._currentUser.id) {
+      // throws error if user logged in:
+      throw new Error(
+        'You are already logged in, please reload the page (sign out to log in with another user).'
+      );
     }
     const link = `${window.location.protocol}//${window.location.host}/${AWS_LOGIN_URL}`;
     const style = `location, toolbar, resizable, scrollbars, status, width=500, height=440, top=200, left=400`;
@@ -220,7 +226,7 @@ export default class AwsProvider extends Provider {
   async logout(onCloudLogoutSuccess) {
     Auth.signOut()
       .then(() => {
-        this._currentUser = null;
+        this._currentUser = {id: '', username: ''};
         onCloudLogoutSuccess();
       })
       .catch(e => AwsProvider._handleError('Signing out failed', e));
