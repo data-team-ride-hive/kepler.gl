@@ -192,8 +192,8 @@ export default class AwsProvider extends Provider {
     const saveMap = this._saveFile(name, 'map.json', map, level);
 
     return Promise.all([saveThumbnail, saveMeta, saveMap])
-      .then(savedList => {
-        const key = savedList && savedList[2] && savedList[2].key;
+      .then(([thumbnailSaved, metaSaved, mapSaved]) => {
+        const key = mapSaved && mapSaved.key;
         this._loadParam = {level, mapId: key};
         // if public, url for sharing is created:
         if (isPublic) {
