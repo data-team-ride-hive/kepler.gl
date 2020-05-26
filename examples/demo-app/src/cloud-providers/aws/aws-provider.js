@@ -24,7 +24,7 @@ import window from 'global';
 import 'aws-sdk';
 import {Auth, Storage} from 'aws-amplify';
 import {MAP_URI} from '../../constants/default-settings';
-import {AWS_LOGIN_URL} from './aws-login';
+import {AWS_LOGIN_URL, AWS_WEB_CLIENT_ID} from './aws-login';
 
 const PROVIDER_NAME = 'aws';
 const DISPLAY_NAME = 'AWS';
@@ -44,11 +44,11 @@ const EXPIRE_TIME_IN_SECONDS = 60 * 60;
 export default class AwsProvider extends Provider {
   constructor(accountName) {
     super({name: PROVIDER_NAME, displayName: accountName || DISPLAY_NAME, icon: AwsIcon});
-    this._getUserInfo()
-      .then(currentUser => {
-        this._currentUser = currentUser;
-      })
-      .catch(e => AwsProvider._handleError(e));
+    this.clientId = AWS_WEB_CLIENT_ID;
+
+    this._currentUser = this.clientId
+      ? this._getUserInfo().then(currentUser => currentUser)
+      : {id: '', username: ''};
 
     this._loadParam = {level: '', mapId: '', identityId: ''};
     this._shareUrl = '';
@@ -59,6 +59,11 @@ export default class AwsProvider extends Provider {
    * @param onCloudLoginSuccess
    */
   async login(onCloudLoginSuccess) {
+    if (!this.clientId) {
+      // Log the error:
+      Auth.currentUserInfo().catch();
+      return;
+    }
     const link = `${window.location.protocol}//${window.location.host}/${AWS_LOGIN_URL}`;
     const style = `location, toolbar, resizable, scrollbars, status, width=500, height=440, top=200, left=400`;
     const authWindow = window.open(link, 'awsCognito', style);
@@ -231,6 +236,10 @@ export default class AwsProvider extends Provider {
    */
   hasPrivateStorage() {
     return PRIVATE_STORAGE_ENABLED;
+  }
+
+  isEnabled() {
+    return Boolean(this.clientId);
   }
 
   /**
