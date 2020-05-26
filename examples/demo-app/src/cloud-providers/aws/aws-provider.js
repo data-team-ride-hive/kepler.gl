@@ -82,11 +82,9 @@ export default class AwsProvider extends Provider {
         window.removeEventListener('message', handleLogin);
 
         if (e.data.success) {
-          this._getUserInfo()
-            .then(currentUser => {
-              this._currentUser = currentUser;
-            })
-            .catch();
+          this._getUserInfo().then(currentUser => {
+            this._currentUser = currentUser;
+          });
           onCloudLoginSuccess();
         }
       }
