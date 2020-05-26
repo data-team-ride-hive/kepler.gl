@@ -46,9 +46,13 @@ export default class AwsProvider extends Provider {
     super({name: PROVIDER_NAME, displayName: accountName || DISPLAY_NAME, icon: AwsIcon});
     this.clientId = AWS_WEB_CLIENT_ID;
 
-    this._currentUser = this.clientId
-      ? this._getUserInfo().then(currentUser => currentUser)
-      : {id: '', username: ''};
+    if (this.clientId) {
+      this._getUserInfo().then(userInfo => {
+        this._currentUser = userInfo;
+      });
+    } else {
+      this._currentUser = {id: '', username: ''};
+    }
 
     this._loadParam = {level: '', mapId: '', identityId: ''};
     this._shareUrl = '';
