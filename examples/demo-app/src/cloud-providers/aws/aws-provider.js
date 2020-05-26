@@ -69,7 +69,7 @@ export default class AwsProvider extends Provider {
     const authWindow = window.open(link, 'awsCognito', style);
 
     // if authWindow is null, it could not be opened
-    const handleLogin = async e => {
+    const handleLogin = e => {
       if (authWindow.location.href === link) {
         if (authWindow) {
           authWindow.close();
