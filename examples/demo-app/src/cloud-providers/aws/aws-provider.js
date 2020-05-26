@@ -127,33 +127,27 @@ export default class AwsProvider extends Provider {
       const thumbnailKey = `${title}.thumbnail.png`;
       const metaKey = `${title}.meta.json`;
 
-      const fileData = {
-        id: file.key,
-        title,
-        description: '',
-        privateMap: level === 'private',
-        thumbnail: '',
-        lastModification: new Date(Date.parse(file.lastModified)),
-        loadParams: {
-          identityId: '',
-          mapId: file.key,
-          level
-        }
-      };
-
-      const thumbnailUrl = fileList.some(f => f.key === thumbnailKey)
+      const loadThumbnail = fileList.some(f => f.key === thumbnailKey)
         ? this._getFile(thumbnailKey, 'image', {level, download: false})
         : null;
-      const description = fileList.some(f => f.key === metaKey)
+      const loadDescription = fileList.some(f => f.key === metaKey)
         ? this._getFile(metaKey, 'meta data', {level, download: true})
-        : 'No description meta data file';
+        : 'No description available';
 
-      return Promise.all([thumbnailUrl, description])
-        .then(respList => {
-          fileData.thumbnail = respList[0];
-          fileData.description = respList[1];
-        })
-        .then(resp => fileData)
+      return Promise.all([loadThumbnail, loadDescription])
+        .then(([thumbnail, description]) => ({
+          id: file.key,
+          title,
+          privateMap: level === 'private',
+          lastModification: new Date(Date.parse(file.lastModified)),
+          loadParams: {
+            identityId: '',
+            mapId: file.key,
+            level
+          },
+          thumbnail,
+          description
+        }))
         .catch(e => this._handleError(e));
     });
     return Promise.all(updatedFileList);
