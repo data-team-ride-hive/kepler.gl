@@ -299,6 +299,7 @@ export default class AwsProvider extends Provider {
   }
 
   _saveFile(name, suffix, content, level, metadata) {
+    let file = content;
     let contentType = '';
     if (suffix === 'thumbnail.png') {
       contentType = 'images/png';
@@ -307,10 +308,11 @@ export default class AwsProvider extends Provider {
       contentType = 'application/json';
     }
     if (suffix === 'meta.json') {
+      file = new Blob([JSON.stringify(content, null, 2)], {type: 'application/json'});
       contentType = 'application/json';
     }
 
-    return Storage.put(`${name}.${suffix}`, content, {
+    return Storage.put(`${name}.${suffix}`, file, {
       level,
       contentType,
       metadata
@@ -329,12 +331,12 @@ export default class AwsProvider extends Provider {
       expires
     })
       .then(file => {
-        if (fileType === 'meta data') {
-          return file.Body && file.Body.description
-            ? file.Body.description
-            : 'No description available.';
-        }
-        return file;
+        return fileType === 'meta data' ? file.Body.text() : file;
+      })
+      .then(resp => {
+        return fileType === 'meta data'
+          ? (JSON.parse(resp) && JSON.parse(resp).description) || 'No description available'
+          : resp;
       })
       .then(resp => resp)
       .catch(e => {
