@@ -49,7 +49,10 @@ Finish the setup by:
 ```sh
 amplify push
 ```
-
+Finally, set the AWSAccountName (just for display) in the environment:
+```sh
+export AWSAccountName=demo-account
+```
 Please note that URLs of shared maps expire after one hour.
 
 #### 4. Start the app
