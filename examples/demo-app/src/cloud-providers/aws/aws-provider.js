@@ -124,10 +124,11 @@ export default class AwsProvider extends Provider {
    * @returns {Array<Viz>}
    */
   static async _prepareFileList(fileList, level) {
-    const mapFileList = fileList.filter(file => file.key.endsWith('map.json'));
+    const mapExtension = '.map.json';
+    const mapFileList = fileList.filter(file => file.key.endsWith(mapExtension));
 
     const updatedFileList = mapFileList.map(file => {
-      const title = file.key.split('.')[0];
+      const title = file.key.slice(0, -mapExtension.length);
       const thumbnailKey = `${title}.thumbnail.png`;
       const metaKey = `${title}.meta.json`;
 
