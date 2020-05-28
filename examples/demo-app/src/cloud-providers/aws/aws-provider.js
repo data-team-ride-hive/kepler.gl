@@ -21,7 +21,6 @@
 import AwsIcon from './aws-icon';
 import {Provider} from 'kepler.gl/cloud-providers';
 import window from 'global';
-import 'aws-sdk';
 import {Auth, Storage} from 'aws-amplify';
 import {MAP_URI} from '../../constants/default-settings';
 import {AWS_LOGIN_URL, AWS_WEB_CLIENT_ID} from './aws-login';
