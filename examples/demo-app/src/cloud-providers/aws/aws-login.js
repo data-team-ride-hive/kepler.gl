@@ -28,6 +28,9 @@ export const AWS_LOGIN_URL = 'aws/aws-login';
 export const AWS_WEB_CLIENT_ID = awsconfig && awsconfig.aws_cognito_identity_pool_id;
 
 const AwsLogin = () => {
+
+  const [accepted, setAccepted] = React.useState(false)
+
   useEffect(() => {
     Hub.listen('auth', data => {
       const {payload} = data;
@@ -37,7 +40,12 @@ const AwsLogin = () => {
     });
   }, []);
 
-  return <AmplifyAuthenticator usernameAlias="email">
+  return <div>
+      <b>Data Privacy</b><br></br>
+        <input type="checkbox" id="accepted" name="accepted" onChange={e => setAccepted(e.target.checked)} />
+        <label for="accepted">Please read and accept the Data Privacy Regulations regarding the use of your personal data. Read especially section 'Contact Form'. In short: We use the data soley to process your contact request. After the request has been answered and there is no data storage purpose anymore your data is deleted. The data is not used for any other purpose. The data is not passed to any third party. https://legal.comsysto.com/comsystoreply.de/de/datenschutz/</label>
+        <hr></hr>
+<AmplifyAuthenticator usernameAlias="email">
     <AmplifySignUp
         slot="sign-up"
         usernameAlias="email"
@@ -73,15 +81,16 @@ const AwsLogin = () => {
             required: false,
           },
           {
-            type: "checkbox",
-            fieldId: "custom:marketing_confirm",
-            label: "Marketing",
-            placeholder: "confirm",
-            required: false,
+            type: "custom:marketing_confirm",
+            label: "Data Privacy Regulations accepted",
+            placeholder: "please confirm at top",
+            required: true,
+            value: accepted ? "yes" : "no"
           }
         ]} 
       />
-    </AmplifyAuthenticator>;
+    </AmplifyAuthenticator>
+    </div>;
 };
 
 export default AwsLogin;
