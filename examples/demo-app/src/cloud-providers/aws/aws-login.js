@@ -21,7 +21,7 @@
 import React, {useEffect} from 'react';
 import Amplify, {Hub} from 'aws-amplify';
 import awsconfig from '../../aws-exports';
-import {AmplifyAuthenticator} from '@aws-amplify/ui-react';
+import {AmplifyAuthenticator, AmplifySignUp} from '@aws-amplify/ui-react';
 
 Amplify.configure(awsconfig);
 export const AWS_LOGIN_URL = 'aws/aws-login';
@@ -37,7 +37,51 @@ const AwsLogin = () => {
     });
   }, []);
 
-  return <AmplifyAuthenticator usernameAlias="email" />;
+  return <AmplifyAuthenticator usernameAlias="email">
+    <AmplifySignUp
+        slot="sign-up"
+        usernameAlias="email"
+        formFields={[
+          {
+            type: "email",
+            label: "Email",
+            placeholder: "your email",
+            required: true,
+          },
+          {
+            type: "password",
+            label: "Password",
+            placeholder: "secure password",
+            required: true,
+          },
+          {
+            type: "custom:firstname",
+            label: "Firstname",
+            placeholder: "your firstname",
+            required: false,
+          },
+          {
+            type: "custom:lastname",
+            label: "Lastname",
+            placeholder: "your lastname",
+            required: false,
+          },
+          {
+            type: "custom:company",
+            label: "Company",
+            placeholder: "your company",
+            required: false,
+          },
+          {
+            type: "checkbox",
+            fieldId: "custom:marketing_confirm",
+            label: "Marketing",
+            placeholder: "confirm",
+            required: false,
+          }
+        ]} 
+      />
+    </AmplifyAuthenticator>;
 };
 
 export default AwsLogin;
