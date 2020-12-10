@@ -18,10 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import React, {useEffect} from 'react';
+import React, {useEffect, useRef} from 'react';
 import Amplify, {Hub} from 'aws-amplify';
 import awsconfig from '../../aws-exports';
-import {AmplifyAuthenticator, AmplifySignUp} from '@aws-amplify/ui-react';
+import {AmplifyAuthenticator, AmplifySignUp, Auth} from '@aws-amplify/ui-react';
+
 
 Amplify.configure(awsconfig);
 export const AWS_LOGIN_URL = 'aws/aws-login';
@@ -40,12 +41,12 @@ const AwsLogin = () => {
     });
   }, []);
 
+
+
   return <div>
-      <b>Data Privacy</b><br></br>
-        <input type="checkbox" id="accepted" name="accepted" onChange={e => setAccepted(e.target.checked)} />
-        <label for="accepted">Please read and accept the Data Privacy Regulations regarding the use of your personal data. Read especially section 'Contact Form'. In short: We use the data soley to process your contact request. After the request has been answered and there is no data storage purpose anymore your data is deleted. The data is not used for any other purpose. The data is not passed to any third party. https://legal.comsysto.com/comsystoreply.de/de/datenschutz/</label>
-        <hr></hr>
+    
 <AmplifyAuthenticator usernameAlias="email">
+
     <AmplifySignUp
         slot="sign-up"
         usernameAlias="email"
@@ -81,11 +82,10 @@ const AwsLogin = () => {
             required: false,
           },
           {
+            inputProps: { type: "checkbox", className:"test123" },
             type: "custom:marketing_confirm",
-            label: "Data Privacy Regulations accepted",
-            placeholder: "please confirm at top",
-            required: true,
-            value: accepted ? "yes" : "no"
+            label: "Please read the Data Privacy Regulations on https://legal.comsysto.com/comsystoreply.de/de/datenschutz/ regarding the use of your personal data and accept by selecting the checkbox below. Read especially section 'Contact Form'. In short: We use the data soley to process your contact request. After the request has been answered and there is no data storage purpose anymore your data is deleted. The data is not used for any other purpose. The data is not passed to any third party.",
+            required: true
           }
         ]} 
       />

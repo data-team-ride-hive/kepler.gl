@@ -74,7 +74,7 @@ export default class AwsProvider extends Provider {
       );
     }
     const link = `${window.location.protocol}//${window.location.host}/${AWS_LOGIN_URL}`;
-    const style = `location, toolbar, resizable, scrollbars, status, width=500, height=440, top=200, left=400`;
+    const style = `location, toolbar, resizable, scrollbars, status, width=500, height=840, top=200, left=400`;
     const authWindow = window.open(link, 'awsCognito', style);
 
     // if authWindow is null, it could not be opened
